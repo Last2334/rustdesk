@@ -1,4 +1,4 @@
-name: Android APK (apt-fast)
+name: Android APK (official mirror)
 
 # Android-only build, inlined from the upstream flutter-build.yml / bridge.yml
 # so that the Actions sidebar has a single entry. The original workflows remain
@@ -148,28 +148,46 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # 方案1：绕过限速的 azure 镜像，直连官方源
+          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+          printf 'http://archive.ubuntu.com/ubuntu/ priority:1\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo mkdir -p /var/cache/apt/archives
           if [ -d .apt-cache ]; then sudo cp -rn .apt-cache/. /var/cache/apt/archives/ || true; fi
           export DEBIAN_FRONTEND=noninteractive
-          sudo -E apt-get install -y aria2
-          # apt-fast (aria2 parallel download), pinned to 1f55b47
-          sudo curl -fsSL -o /usr/local/bin/apt-fast \
-            https://raw.githubusercontent.com/ilikenwf/apt-fast/1f55b476b568f8589df8c040c2c1afd4a2384c4f/apt-fast
-          sudo curl -fsSL -o /etc/apt/apt-fast.conf \
-            https://raw.githubusercontent.com/ilikenwf/apt-fast/1f55b476b568f8589df8c040c2c1afd4a2384c4f/apt-fast.conf
-          sudo chmod +x /usr/local/bin/apt-fast
-          printf '_MAXNUM=10\n_MAXCONPERSRV=10\n' | sudo tee -a /etc/apt/apt-fast.conf > /dev/null
-          PKGS="clang cmake curl gcc-multilib git g++ g++-multilib libayatana-appindicator3-dev libasound2-dev libc6-dev libclang-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev libpam0g-dev libpulse-dev libva-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev llvm-dev nasm ninja-build openjdk-17-jdk-headless pkg-config tree wget"
-          # 正常走 apt-fast；只有它失败时才换源并回退 apt-get，避免正常机器被换源拖慢
-          if ! sudo -E apt-fast install -y --no-install-recommends $PKGS; then
-            echo 'apt-fast failed, switching to archive.ubuntu.com and retrying with apt-get'
-            sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-            printf 'http://archive.ubuntu.com/ubuntu/ priority:1\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
-            sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
-            sudo -E apt-get install -y --no-install-recommends \
-              -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold $PKGS
-          fi
+          sudo -E apt-get install -y \
+            -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold \
+               clang \
+               cmake \
+               curl \
+               gcc-multilib \
+               git \
+               g++ \
+               g++-multilib \
+               libayatana-appindicator3-dev \
+               libasound2-dev \
+               libc6-dev \
+               libclang-dev \
+               libunwind-dev \
+               libgstreamer1.0-dev \
+               libgstreamer-plugins-base1.0-dev \
+               libgtk-3-dev \
+               libpam0g-dev \
+               libpulse-dev \
+               libva-dev \
+               libxcb-randr0-dev \
+               libxcb-shape0-dev \
+               libxcb-xfixes0-dev \
+               libxdo-dev \
+               libxfixes-dev \
+               llvm-dev \
+               nasm \
+               ninja-build \
+               openjdk-17-jdk-headless \
+               pkg-config \
+               tree \
+               wget
           mkdir -p .apt-cache && sudo cp -n /var/cache/apt/archives/*.deb .apt-cache/ 2>/dev/null || true
       - name: Checkout source code
         uses: actions/checkout@v4
