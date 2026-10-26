@@ -951,8 +951,13 @@ pub fn check_software_update() {
 
 // No need to check `danger_accept_invalid_cert` for now.
 // Because the url is always `https://api.rustdesk.com/version/latest`.
+#[allow(unreachable_code)]
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
+    // 定制构建：不向上游查询版本，也不产生任何更新提示
+    *SOFTWARE_UPDATE_URL.lock().unwrap() = String::new();
+    return Ok(());
+
     let (request, url) =
         hbb_common::version_check_request(hbb_common::VER_TYPE_RUSTDESK_CLIENT.to_string());
     let proxy_conf = Config::get_socks();
