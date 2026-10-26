@@ -138,20 +138,33 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
+      - name: Restore apt package cache
+        uses: actions/cache@v4
+        with:
+          path: .apt-cache
+          key: apt-debs-${{ runner.os }}-${{ hashFiles('.github/workflows/android-aptfast.yml') }}
+          restore-keys: |
+            apt-debs-${{ runner.os }}-
+
       - name: Install dependencies
         run: |
           sudo apt-get update -o Acquire::Retries=3
-          # apt-fast（aria2 多连接并行下载），版本锁在 1f55b47
-          sudo apt-get install -y aria2
+          sudo mkdir -p /var/cache/apt/archives
+          if [ -d .apt-cache ]; then sudo cp -rn .apt-cache/. /var/cache/apt/archives/ || true; fi
+          export DEBIAN_FRONTEND=noninteractive
+          DPKG_OPTS="-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+          sudo -E apt-get install -y $DPKG_OPTS aria2
+          # apt-fast (aria2 parallel download), pinned to 1f55b47
           sudo curl -fsSL -o /usr/local/bin/apt-fast \
             https://raw.githubusercontent.com/ilikenwf/apt-fast/1f55b476b568f8589df8c040c2c1afd4a2384c4f/apt-fast
           sudo curl -fsSL -o /etc/apt/apt-fast.conf \
             https://raw.githubusercontent.com/ilikenwf/apt-fast/1f55b476b568f8589df8c040c2c1afd4a2384c4f/apt-fast.conf
           sudo chmod +x /usr/local/bin/apt-fast
+          printf '_MAXNUM=10\n_MAXCONPERSRV=10\n' | sudo tee -a /etc/apt/apt-fast.conf > /dev/null
           PKGS="clang cmake curl gcc-multilib git g++ g++-multilib libayatana-appindicator3-dev libasound2-dev libc6-dev libclang-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev libpam0g-dev libpulse-dev libva-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev libxfixes-dev llvm-dev nasm ninja-build openjdk-17-jdk-headless pkg-config tree wget"
-          sudo apt-fast install -y --no-install-recommends $PKGS \
-            || sudo apt-get install -y --no-install-recommends $PKGS
-
+          sudo -E apt-fast install -y --no-install-recommends $DPKG_OPTS $PKGS \
+            || sudo -E apt-get install -y --no-install-recommends $DPKG_OPTS $PKGS
+          mkdir -p .apt-cache && sudo cp -n /var/cache/apt/archives/*.deb .apt-cache/ 2>/dev/null || true
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
