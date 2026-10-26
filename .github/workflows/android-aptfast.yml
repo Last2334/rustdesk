@@ -44,7 +44,7 @@ jobs:
         run: |
           # 与 build job 一致：使用官方源，避免 azure 镜像限速
           sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-          printf 'http://us-east-1.ec2.archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          printf 'http://archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           export DEBIAN_FRONTEND=noninteractive
           sudo -E apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo -E apt-get install -y \
@@ -159,7 +159,7 @@ jobs:
         run: |
           # 方案1：绕过限速的 azure 镜像，直连官方源
           sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-          printf 'http://us-east-1.ec2.archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          printf 'http://archive.ubuntu.com/ubuntu/\n' | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
           sudo mkdir -p /var/cache/apt/archives
           if [ -d .apt-cache ]; then sudo cp -rn .apt-cache/. /var/cache/apt/archives/ || true; fi
